@@ -2,6 +2,7 @@ package com.github.mmizutani.playgulp
 
 import javax.inject._
 import play.api._
+import play.api.libs.MimeTypes
 import play.api.mvc._
 import java.io.File
 import scala.concurrent.Future
@@ -80,8 +81,11 @@ class GulpAssets @Inject() (env: play.api.Environment,
       file.exists()
     } map { file =>
       if (file.isFile) {
-        logger.info(s"Serving $file")
-        Ok.sendFile(file, inline = true).withHeaders(CACHE_CONTROL -> "no-store")
+        logger.info(s"Serving $file")      
+        val source = FileIO.fromPath( Paths.get(file.getPath))
+        val mimeType = MimeTypes.forFileName(file.getName).orElse(Some(play.api.http.ContentTypes.BINARY))
+        val result = RangeResult.ofSource(file.length(), source, request.headers.get(RANGE), None,mimeType)
+        result.withHeaders(CACHE_CONTROL -> "no-cache")
       } else {
         Forbidden(views.html.defaultpages.unauthorized())
       }
